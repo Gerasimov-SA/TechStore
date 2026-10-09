@@ -33,7 +33,7 @@ fun WebViewContainer(
     onFinished: (String?) -> Unit,
     onError: (String) -> Unit,
     viewModel: TechStoreViewModel,
-    scope: CoroutineScope // нужен, чтобы обновлять canGoBack из UI
+    scope: CoroutineScope
 ) {
     var webView by remember { androidx.compose.runtime.mutableStateOf<WebView?>(null) }
 
@@ -41,10 +41,9 @@ fun WebViewContainer(
     BackHandler {
         if (webView?.canGoBack() == true) {
             webView?.goBack()
-            // Опционально: можно тут же обновить canGoBack в ViewModel, если делаешь отдельный флаг
+
         } else {
-            // Если нельзя назад в WebView — закрываем приложение или переходим на предыдущий экран
-            // В MainActivity это будет просто super.onBackPressed()
+
         }
     }
 
@@ -56,17 +55,16 @@ fun WebViewContainer(
                     android.view.ViewGroup.LayoutParams.MATCH_PARENT
                 )
 
-                // 1. Настройки WebView — обязательно для продакшн-уровня
                 settings.apply {
                     javaScriptEnabled = true
                     domStorageEnabled = true
                     loadWithOverviewMode = true
                     useWideViewPort = true
-                    builtInZoomControls = false // лучше не показывать нативные зумы
+                    builtInZoomControls = false
                     displayZoomControls = false
                     allowFileAccess = true
                     mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-                    mediaPlaybackRequiresUserGesture = false // автовоспроизведение, если нужно
+                    mediaPlaybackRequiresUserGesture = false
                 }
                 // Если сайт пытается скачать файл — открываем в браузере/файловом менеджере
                 setDownloadListener { downloadUrl, userAgent, contentDisposition, mimeType, contentLength ->
@@ -76,7 +74,7 @@ fun WebViewContainer(
                     }
                     context.startActivity(intent)
                 }
-                // 2. WebViewClient — навигация и ошибки
+                // WebViewClient — навигация и ошибки
                 webViewClient = object : WebViewClient() {
                     override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                         onStarted()
@@ -85,7 +83,6 @@ fun WebViewContainer(
 
                     override fun onPageFinished(view: WebView?, url: String?) {
                         onFinished(url)
-                        // Здесь можно обновлять canGoBack для UI, если хочешь показывать кнопку «Назад» в шапке
                         scope.launch(Dispatchers.Main) {
                             viewModel.updateCanGoBack(view?.canGoBack() ?: false)
                         }
@@ -108,12 +105,12 @@ fun WebViewContainer(
                         view: WebView?,
                         request: WebResourceRequest?
                     ): Boolean {
-                        // Грузим всё внутри WebView (включая внешние ссылки, если это твой кейс)
+
                         return false
                     }
                 }
 
-                // 3. ChromeClient — диалоги, загрузки, камера и т.д.
+                // ChromeClient — диалоги, загрузки, камера и т.д.
                 webChromeClient = object : WebChromeClient() {
                     // Обработка alert/confirm/prompt
                     override fun onJsAlert(view: WebView?, url: String?, message: String?, result: JsResult?): Boolean {
@@ -121,22 +118,17 @@ fun WebViewContainer(
                        return true
                     }
 
-
-
-
-                    // Поддержка input type="file" (загрузка файлов с сайта)
+                    // Загрузка файлов с сайта
                     override fun onShowFileChooser(
                         webView: WebView?,
                         filePathCallback: ValueCallback<Array<Uri>>?,
                         fileChooserParams: FileChooserParams?
                     ): Boolean {
-                        // Для MVP можно просто открывать браузер для скачивания,
-                        // либо реализовать полноценный FileChooser через ActivityResultLauncher
-                        // Ниже — простой вариант: открываем URL в браузере
+                        // Для MVP открываем браузер для скачивания,
+                        // либо можно реализовать полноценный FileChooser через ActivityResultLauncher
                         if (filePathCallback != null) {
                             val intent = android.content.Intent(android.content.Intent.ACTION_GET_CONTENT)
                                 .apply { type = "*/*" }
-                            // Тут нужно правильно обработать callback — для MVP часто достаточно заглушить
                             filePathCallback.onReceiveValue(null) // заглушка, чтобы не висело
                         }
                         return true
