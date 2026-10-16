@@ -1,17 +1,18 @@
 package com.gerasimov_mobile_dev.techstore
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.compose.rememberNavController
+import com.gerasimov_mobile_dev.techstore.navigation.TechStoreNavGraph
 import com.gerasimov_mobile_dev.techstore.ui.MainScreen
+import com.gerasimov_mobile_dev.techstore.ui.WebViewContainer
 import com.gerasimov_mobile_dev.techstore.ui.theme.TechStoreTheme
 
 class MainActivity : ComponentActivity() {
@@ -19,10 +20,17 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-                TechStoreTheme {
-                    val viewModel = TechStoreViewModel("https://gerasimov-sa.github.io/techstore-web/")
-                    MainScreen(viewModel = viewModel)
+            TechStoreTheme {
+                val navController = rememberNavController()
+                val scope = rememberCoroutineScope()
 
+                TechStoreNavGraph(
+                    navController = navController,
+                    viewModelFactory = { initialUrl ->
+                        TechStoreViewModel(initialUrl)
+                    },
+                    scope = scope
+                )
             }
 
         }

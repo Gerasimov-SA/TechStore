@@ -4,6 +4,8 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
+import android.util.Log
+import android.view.ViewGroup
 import android.webkit.JsResult
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
@@ -12,11 +14,11 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import androidx.activity.compose.BackHandler
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -35,24 +37,13 @@ fun WebViewContainer(
     viewModel: TechStoreViewModel,
     scope: CoroutineScope
 ) {
-    var webView by remember { androidx.compose.runtime.mutableStateOf<WebView?>(null) }
 
-    // Обрабатываем кнопку «Назад» устройства
-    BackHandler {
-        if (webView?.canGoBack() == true) {
-            webView?.goBack()
-
-        } else {
-
-        }
-    }
-
-   AndroidView(
+    AndroidView(
         factory = { context ->
             val wv = WebView(context).apply {
-                layoutParams = android.view.ViewGroup.LayoutParams(
-                    android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                    android.view.ViewGroup.LayoutParams.MATCH_PARENT
+                layoutParams = ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT
                 )
 
                 settings.apply {
@@ -66,9 +57,8 @@ fun WebViewContainer(
                     mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
                     mediaPlaybackRequiresUserGesture = false
                 }
-                // Если сайт пытается скачать файл — открываем в браузере/файловом менеджере
+//                // Если сайт пытается скачать файл — открываем в браузере/файловом менеджере
                 setDownloadListener { downloadUrl, userAgent, contentDisposition, mimeType, contentLength ->
-                    // Открываем ссылку в браузере — простой вариант для MVP
                     val intent = Intent(Intent.ACTION_VIEW).apply {
                         data = Uri.parse(downloadUrl)
                     }
@@ -77,11 +67,13 @@ fun WebViewContainer(
                 // WebViewClient — навигация и ошибки
                 webViewClient = object : WebViewClient() {
                     override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
+                        Log.d("WebView", "onPageStarted: $url")
                         onStarted()
                         super.onPageStarted(view, url, favicon)
                     }
 
                     override fun onPageFinished(view: WebView?, url: String?) {
+                        Log.d("WebView", "onPageFinished: $url")
                         onFinished(url)
                         scope.launch(Dispatchers.Main) {
                             viewModel.updateCanGoBack(view?.canGoBack() ?: false)
@@ -95,8 +87,12 @@ fun WebViewContainer(
                         request: WebResourceRequest?,
                         error: WebResourceError?
                     ) {
+                        Log.e(
+                            "WebView",
+                            "onReceivedError: ${error?.errorCode} ${error?.description} ${request?.url}"
+                        )
                         val msg = error?.description ?: "Ошибка загрузки страницы"
-                        onError(msg as String)
+                        onError(msg.toString())
                         super.onReceivedError(view, request, error)
                     }
 
@@ -105,17 +101,21 @@ fun WebViewContainer(
                         view: WebView?,
                         request: WebResourceRequest?
                     ): Boolean {
-
                         return false
                     }
                 }
 
-                // ChromeClient — диалоги, загрузки, камера и т.д.
+//                 ChromeClient — диалоги, загрузки, камера и т.д.
                 webChromeClient = object : WebChromeClient() {
                     // Обработка alert/confirm/prompt
-                    override fun onJsAlert(view: WebView?, url: String?, message: String?, result: JsResult?): Boolean {
+                    override fun onJsAlert(
+                        view: WebView?,
+                        url: String?,
+                        message: String?,
+                        result: JsResult?
+                    ): Boolean {
                         result?.confirm()
-                       return true
+                        return true
                     }
 
                     // Загрузка файлов с сайта
@@ -127,7 +127,7 @@ fun WebViewContainer(
                         // Для MVP открываем браузер для скачивания,
                         // либо можно реализовать полноценный FileChooser через ActivityResultLauncher
                         if (filePathCallback != null) {
-                            val intent = android.content.Intent(android.content.Intent.ACTION_GET_CONTENT)
+                            val intent = Intent(Intent.ACTION_GET_CONTENT)
                                 .apply { type = "*/*" }
                             filePathCallback.onReceiveValue(null) // заглушка, чтобы не висело
                         }
@@ -135,9 +135,14 @@ fun WebViewContainer(
                     }
                 }
             }
+            viewModel.setWebView(wv)
+            Log.d("WebView", "WebView created, loading URL: $url")
             wv.loadUrl(url)
-            webView = wv
             wv
+
+        }, update = { wv ->
+            // Если AndroidView пересоздал WebView — обновляем ссылку в ViewModel
+            viewModel.setWebView(wv)
         },
         modifier = Modifier.fillMaxSize()
     )
