@@ -17,7 +17,7 @@ fun MainScreen(viewModel: TechStoreViewModel) {
     when (val s = state) {
         is TechStoreState.Loading -> {
             Log.d("MainScreen", "State: Loading")
-            SplashScreen()
+            SkeletonUiScreen()
         }
         is TechStoreState.Ready -> {
             Log.d("MainScreen", "State: Ready, url = ${s.url}")
