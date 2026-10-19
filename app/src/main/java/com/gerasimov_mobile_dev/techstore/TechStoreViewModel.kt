@@ -14,18 +14,18 @@ sealed class TechStoreState {
 }
 
 
-class TechStoreViewModel(initialUrl: String) {
+class TechStoreViewModel() {
     private val _uiState = MutableStateFlow<TechStoreState>(TechStoreState.Loading)
     val uiState: StateFlow<TechStoreState> = _uiState.asStateFlow()
 
-    fun onPageStarted() {
+    fun pageStarted() {
 
         _uiState.value = TechStoreState.Loading
 
     }
 
 
-    fun onPageFinished(url: String?) {
+    fun pageFinished(url: String?) {
         if (!url.isNullOrEmpty()) {
             _uiState.value = TechStoreState.Ready(url)
         } else {
@@ -35,15 +35,17 @@ class TechStoreViewModel(initialUrl: String) {
     }
 
 
-    fun onError(message: String) {
+    fun error(message: String) {
+
         _uiState.value = TechStoreState.Error(message)
 
     }
 
-   var goBack = false
+    var goBack = false
     fun updateCanGoBack(canGoBack: Boolean) {
         goBack = canGoBack
     }
+
     private var webViewRef: WebView? = null
 
     fun setWebView(webView: WebView) {
@@ -56,5 +58,9 @@ class TechStoreViewModel(initialUrl: String) {
                 wv.goBack()
             }
         }
+    }
+
+    companion object {
+        const val BASE_URL = "https://gerasimov-sa.github.io/techstore-web/"
     }
 }

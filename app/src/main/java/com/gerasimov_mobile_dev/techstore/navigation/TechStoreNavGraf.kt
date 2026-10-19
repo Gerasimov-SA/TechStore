@@ -1,6 +1,7 @@
 package com.gerasimov_mobile_dev.techstore.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -13,7 +14,7 @@ sealed class Screen(val route: String) {
 @Composable
 fun TechStoreNavGraph(
     navController: NavHostController,
-    viewModelFactory: (String) -> TechStoreViewModel,
+    viewModelFactory: () -> TechStoreViewModel,
     scope: CoroutineScope
 ) {
     NavHost(
@@ -21,8 +22,7 @@ fun TechStoreNavGraph(
         startDestination = Screen.Main.route
     ) {
         composable(Screen.Main.route) {
-//            val viewModel = viewModelFactory("https://gerasimov-sa.github.io/techstore-web/")
-            val viewModel = viewModelFactory("https://hop.uz/")
+            val viewModel = viewModelFactory()
             MainScreen(viewModel = viewModel)
 
         }

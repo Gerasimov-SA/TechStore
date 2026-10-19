@@ -17,10 +17,6 @@ import android.webkit.WebViewClient
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import com.gerasimov_mobile_dev.techstore.TechStoreViewModel
@@ -124,8 +120,7 @@ fun WebViewContainer(
                         filePathCallback: ValueCallback<Array<Uri>>?,
                         fileChooserParams: FileChooserParams?
                     ): Boolean {
-                        // Для MVP открываем браузер для скачивания,
-                        // либо можно реализовать полноценный FileChooser через ActivityResultLauncher
+                        //  можно реализовать полноценный FileChooser через ActivityResultLauncher
                         if (filePathCallback != null) {
                             val intent = Intent(Intent.ACTION_GET_CONTENT)
                                 .apply { type = "*/*" }
@@ -143,6 +138,10 @@ fun WebViewContainer(
         }, update = { wv ->
             // Если AndroidView пересоздал WebView — обновляем ссылку в ViewModel
             viewModel.setWebView(wv)
+            if (wv.url != url && url != TechStoreViewModel.BASE_URL) {
+                Log.d("WebView", "URL changed, loading: $url")
+                wv.loadUrl(url)
+            }
         },
         modifier = Modifier.fillMaxSize()
     )
