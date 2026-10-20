@@ -81,7 +81,7 @@ class TechStoreViewModel(val context: Context) {
     }
 
     companion object {
-        //const val BASE_URL = "https://gerasimov-sa.github.io/techstore-web/"
-        const val BASE_URL = "https://www.ilovepdf.com/"
+        const val BASE_URL = "https://gerasimov-sa.github.io/techstore-web/"
+
     }
 }

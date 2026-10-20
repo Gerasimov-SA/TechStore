@@ -101,8 +101,20 @@ fun WebViewContainer(
                         view: WebView?,
                         request: WebResourceRequest?
                     ): Boolean {
+                        val url = request?.url?.toString() ?: return false
+
+                        if (!url.contains(TechStoreViewModel.BASE_URL)) {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            }
+                            view?.context?.startActivity(intent)
+                            return true
+                        }
                         return false
                     }
+
+
+
                 }
 
 //                 ChromeClient — диалоги, загрузки, камера и т.д.
