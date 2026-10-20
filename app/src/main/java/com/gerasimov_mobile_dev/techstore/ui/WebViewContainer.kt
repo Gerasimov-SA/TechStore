@@ -18,7 +18,9 @@ import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
+import com.gerasimov_mobile_dev.techstore.MainActivity
 import com.gerasimov_mobile_dev.techstore.TechStoreViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -33,6 +35,8 @@ fun WebViewContainer(
     viewModel: TechStoreViewModel,
     scope: CoroutineScope
 ) {
+    val context = LocalContext.current
+    val activity = context as? MainActivity ?: return
 
     AndroidView(
         factory = { context ->
@@ -120,12 +124,9 @@ fun WebViewContainer(
                         filePathCallback: ValueCallback<Array<Uri>>?,
                         fileChooserParams: FileChooserParams?
                     ): Boolean {
-                        //  можно реализовать полноценный FileChooser через ActivityResultLauncher
-                        if (filePathCallback != null) {
-                            val intent = Intent(Intent.ACTION_GET_CONTENT)
-                                .apply { type = "*/*" }
-                            filePathCallback.onReceiveValue(null) // заглушка, чтобы не висело
-                        }
+                        if (filePathCallback == null) return false
+
+                        activity.requestFilePick(filePathCallback, fileChooserParams)
                         return true
                     }
                 }
