@@ -31,10 +31,7 @@ class TechStoreViewModel(val context: Context) {
     fun pageStarted() {
 
 
-
     }
-
-
 
 
     fun pageFinished(url: String?) {
@@ -84,7 +81,7 @@ class TechStoreViewModel(val context: Context) {
     }
 
     companion object {
-        //        const val BASE_URL = "https://gerasimov-sa.github.io/techstore-web/"
-        const val BASE_URL = "https://hop.uz/"
+        //const val BASE_URL = "https://gerasimov-sa.github.io/techstore-web/"
+        const val BASE_URL = "https://www.ilovepdf.com/"
     }
 }

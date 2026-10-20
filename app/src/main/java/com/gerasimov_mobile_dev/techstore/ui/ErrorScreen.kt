@@ -8,11 +8,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ErrorOutline
-import androidx.compose.material.icons.rounded.WifiOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -32,7 +30,9 @@ fun ErrorScreen(
     onRetry: () -> Unit
 ) {
 
-    Box(modifier = Modifier.fillMaxSize().clickable(true, onClick = {}))
+    Box(modifier = Modifier
+        .fillMaxSize()
+        .clickable(true, onClick = {}))
     Column(
         modifier = Modifier
             .fillMaxSize()

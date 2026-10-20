@@ -39,24 +39,23 @@ fun MainScreen(viewModel: TechStoreViewModel) {
 
     }
 
-        Log.d("state", "state = $state")
-        when (val s = state) {
-            is TechStoreState.Loading -> {
-                Log.d("MainScreen", "State: Loading")
+    Log.d("state", "state = $state")
+    when (val s = state) {
+        is TechStoreState.Loading -> {
+            Log.d("MainScreen", "State: Loading")
                 LoadingScreen()
-            }
-
-            is TechStoreState.Error -> {
-                Log.e("MainScreen", "State: Error, message = ${s.message}")
-                ErrorScreen(
-                    message = s.message,
-                    onRetry = { viewModel.retry() }
-                )
-            }
-
-            else -> Unit
         }
 
+        is TechStoreState.Error -> {
+            Log.e("MainScreen", "State: Error, message = ${s.message}")
+            ErrorScreen(
+                message = s.message,
+                onRetry = { viewModel.retry() }
+            )
+        }
+
+        else -> Unit
+    }
 
 
 }
