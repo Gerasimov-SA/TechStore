@@ -4,6 +4,8 @@ import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
@@ -41,7 +43,7 @@ fun MainScreen(viewModel: TechStoreViewModel) {
         when (val s = state) {
             is TechStoreState.Loading -> {
                 Log.d("MainScreen", "State: Loading")
-
+                LoadingScreen()
             }
 
             is TechStoreState.Error -> {
