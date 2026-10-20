@@ -1,5 +1,6 @@
 package com.gerasimov_mobile_dev.techstore
 
+import android.app.Application
 import android.os.Bundle
 
 import androidx.activity.ComponentActivity
@@ -21,11 +22,10 @@ class MainActivity : ComponentActivity() {
             TechStoreTheme {
                 val navController = rememberNavController()
                 val scope = rememberCoroutineScope()
-
                 TechStoreNavGraph(
                     navController = navController,
                     viewModelFactory = {
-                        TechStoreViewModel()
+                        TechStoreViewModel(context = applicationContext)
                     },
                     scope = scope
                 )

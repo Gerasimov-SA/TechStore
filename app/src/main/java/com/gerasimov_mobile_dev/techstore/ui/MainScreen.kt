@@ -21,10 +21,12 @@ fun MainScreen(viewModel: TechStoreViewModel) {
         viewModel.goBack()
     }
     Box(modifier = Modifier.fillMaxSize()) {
+
         WebViewContainer(
             url = when (val s = state) {
                 is TechStoreState.Ready -> s.url
-                else -> TechStoreViewModel.BASE_URL
+                is TechStoreState.Loading -> TechStoreViewModel.BASE_URL
+                is TechStoreState.Error -> "about:blank"
             },
             onStarted = { viewModel.pageStarted() },
             onFinished = { loadedUrl -> viewModel.pageFinished(loadedUrl) },
@@ -32,22 +34,27 @@ fun MainScreen(viewModel: TechStoreViewModel) {
             viewModel = viewModel,
             scope = scope
         )
-    }
-    Log.d("state", "state = $state")
-    when (val s = state) {
-        is TechStoreState.Loading -> {
-            Log.d("MainScreen", "State: Loading")
 
+    }
+
+        Log.d("state", "state = $state")
+        when (val s = state) {
+            is TechStoreState.Loading -> {
+                Log.d("MainScreen", "State: Loading")
+
+            }
+
+            is TechStoreState.Error -> {
+                Log.e("MainScreen", "State: Error, message = ${s.message}")
+                ErrorScreen(
+                    message = s.message,
+                    onRetry = { viewModel.retry() }
+                )
+            }
+
+            else -> Unit
         }
 
-        is TechStoreState.Error -> {
-            Log.e("MainScreen", "State: Error, message = ${s.message}")
-            OfflineScreen(
-                message = s.message,
-                onRetry = { /* тут логика повторной загрузки */ }
-            )
-        }
 
-        else -> Unit
-    }
+
 }

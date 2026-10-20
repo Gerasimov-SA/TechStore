@@ -1,6 +1,9 @@
 package com.gerasimov_mobile_dev.techstore
 
+import android.content.Context
+import android.util.Log
 import android.webkit.WebView
+import com.gerasimov_mobile_dev.techstore.utils.NetworkUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -14,23 +17,32 @@ sealed class TechStoreState {
 }
 
 
-class TechStoreViewModel() {
+class TechStoreViewModel(val context: Context) {
     private val _uiState = MutableStateFlow<TechStoreState>(TechStoreState.Loading)
     val uiState: StateFlow<TechStoreState> = _uiState.asStateFlow()
 
+    init {
+        if (!NetworkUtils.isConnected(context = context)) {
+            _uiState.value = TechStoreState.Error("Нет подключения к интернету")
+            Log.d("ViewModel", "init")
+        }
+    }
+
     fun pageStarted() {
 
-        _uiState.value = TechStoreState.Loading
+
 
     }
 
 
+
+
     fun pageFinished(url: String?) {
-        if (!url.isNullOrEmpty()) {
+        if (url != "about:blank" && !url.isNullOrBlank()) {
             _uiState.value = TechStoreState.Ready(url)
         } else {
-            // Если URL пустой
-            _uiState.value = TechStoreState.Error("Страница загружена, но URL не определён")
+            Log.w("VM", "Ignored invalid URL: $url")
+
         }
     }
 
@@ -60,7 +72,19 @@ class TechStoreViewModel() {
         }
     }
 
+    fun reloadWebView() {
+        webViewRef?.reload()
+    }
+
+    fun retry() {
+        if (NetworkUtils.isConnected(context = context)) {
+            _uiState.value = TechStoreState.Loading
+            reloadWebView()
+        } else _uiState.value = TechStoreState.Error("Нет подключения к интернету")
+    }
+
     companion object {
-        const val BASE_URL = "https://gerasimov-sa.github.io/techstore-web/"
+        //        const val BASE_URL = "https://gerasimov-sa.github.io/techstore-web/"
+        const val BASE_URL = "https://hop.uz/"
     }
 }

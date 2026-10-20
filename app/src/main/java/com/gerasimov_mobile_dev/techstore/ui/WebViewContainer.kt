@@ -138,7 +138,7 @@ fun WebViewContainer(
         }, update = { wv ->
             // Если AndroidView пересоздал WebView — обновляем ссылку в ViewModel
             viewModel.setWebView(wv)
-            if (wv.url != url && url != TechStoreViewModel.BASE_URL) {
+            if (wv.url != url && url != "about:blank") {
                 Log.d("WebView", "URL changed, loading: $url")
                 wv.loadUrl(url)
             }
