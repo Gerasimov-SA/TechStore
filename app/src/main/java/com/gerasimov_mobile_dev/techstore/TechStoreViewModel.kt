@@ -80,6 +80,16 @@ class TechStoreViewModel(val context: Context) {
         } else _uiState.value = TechStoreState.Error("Нет подключения к интернету")
     }
 
+    fun setWebViewUrl(url: String) {
+        webViewRef?.loadUrl(url)
+    }
+
+    fun evaluateJs(js: String) {
+        // Если WebView ещё не готов — можно либо игнорировать, либо ставить в очередь
+        webViewRef?.evaluateJavascript(js) { result ->
+            Log.d("VM", "JS result: $result")
+        }
+    }
     companion object {
         const val BASE_URL = "https://gerasimov-sa.github.io/techstore-web/"
 

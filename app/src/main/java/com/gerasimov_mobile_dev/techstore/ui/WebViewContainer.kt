@@ -33,7 +33,8 @@ fun WebViewContainer(
     onFinished: (String?) -> Unit,
     onError: (String) -> Unit,
     viewModel: TechStoreViewModel,
-    scope: CoroutineScope
+    scope: CoroutineScope,
+    modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val activity = context as? MainActivity ?: return
@@ -102,7 +103,7 @@ fun WebViewContainer(
                         request: WebResourceRequest?
                     ): Boolean {
                         val url = request?.url?.toString() ?: return false
-
+                        Log.d("WebView","equest?.url = $url")
                         if (!url.contains(TechStoreViewModel.BASE_URL)) {
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
                                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
@@ -156,6 +157,6 @@ fun WebViewContainer(
                 wv.loadUrl(url)
             }
         },
-        modifier = Modifier.fillMaxSize()
+        modifier = modifier.fillMaxSize()
     )
 }
