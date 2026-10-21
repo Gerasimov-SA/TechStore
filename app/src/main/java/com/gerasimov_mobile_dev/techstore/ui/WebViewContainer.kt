@@ -33,7 +33,8 @@ fun WebViewContainer(
     onFinished: (String?) -> Unit,
     onError: (String) -> Unit,
     viewModel: TechStoreViewModel,
-    scope: CoroutineScope
+    scope: CoroutineScope,
+    modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val activity = context as? MainActivity ?: return
@@ -156,6 +157,6 @@ fun WebViewContainer(
                 wv.loadUrl(url)
             }
         },
-        modifier = Modifier.fillMaxSize()
+        modifier = modifier.fillMaxSize()
     )
 }
