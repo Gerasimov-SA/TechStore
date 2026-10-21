@@ -103,7 +103,7 @@ fun WebViewContainer(
                         request: WebResourceRequest?
                     ): Boolean {
                         val url = request?.url?.toString() ?: return false
-
+                        Log.d("WebView","equest?.url = $url")
                         if (!url.contains(TechStoreViewModel.BASE_URL)) {
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
                                 flags = Intent.FLAG_ACTIVITY_NEW_TASK

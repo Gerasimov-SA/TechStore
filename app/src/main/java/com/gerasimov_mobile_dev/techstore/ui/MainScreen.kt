@@ -68,9 +68,9 @@ fun MainScreen(viewModel: TechStoreViewModel) {
                             currentItem = item
                             when (item) {
                                 is BottomNavItem.Home -> viewModel.setWebViewUrl("https://gerasimov-sa.github.io/techstore-web/")
-                                is BottomNavItem.Search -> viewModel.setWebViewUrl("https://gerasimov-sa.github.io/techstore-web/#search")
-                                is BottomNavItem.Cart -> viewModel.evaluateJs("openCart()")
-                                is BottomNavItem.Profile -> viewModel.setWebViewUrl("https://gerasimov-sa.github.io/techstore-web/profile.html")
+                                is BottomNavItem.Search -> viewModel.setWebViewUrl("https://gerasimov-sa.github.io/techstore-web/search")
+                                is BottomNavItem.Cart -> viewModel.setWebViewUrl("https://gerasimov-sa.github.io/techstore-web/cart")
+                                is BottomNavItem.Profile -> viewModel.setWebViewUrl("https://gerasimov-sa.github.io/techstore-web/profile")
                             }
                         },
                         icon = { Icon(item.icon, contentDescription = null) },

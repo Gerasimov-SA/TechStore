@@ -81,7 +81,6 @@ class TechStoreViewModel(val context: Context) {
     }
 
     fun setWebViewUrl(url: String) {
-        _uiState.value = TechStoreState.Loading
         webViewRef?.loadUrl(url)
     }
 
