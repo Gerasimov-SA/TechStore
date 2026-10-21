@@ -22,6 +22,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import com.gerasimov_mobile_dev.techstore.MainActivity
 import com.gerasimov_mobile_dev.techstore.TechStoreViewModel
+import com.gerasimov_mobile_dev.techstore.bridge.WebScripts
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -75,6 +76,9 @@ fun WebViewContainer(
 
                     override fun onPageFinished(view: WebView?, url: String?) {
                         Log.d("WebView", "onPageFinished: $url")
+
+                        view?.evaluateJavascript(WebScripts.hideHeader, null) //Чтобы при загрузке сайта скрыть его шапку
+
                         onFinished(url)
                         scope.launch(Dispatchers.Main) {
                             viewModel.updateCanGoBack(view?.canGoBack() ?: false)
