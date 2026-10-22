@@ -1,25 +1,23 @@
 package com.gerasimov_mobile_dev.techstore.ui
 
-import android.text.Layout
+
 import android.util.Log
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.delete
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -28,13 +26,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
-import androidx.compose.material3.SearchBarValue
+import androidx.compose.material3.SearchBarDefaults.inputFieldColors
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -44,16 +39,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-
-
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gerasimov_mobile_dev.techstore.TechStoreState
 import com.gerasimov_mobile_dev.techstore.TechStoreViewModel
 import com.gerasimov_mobile_dev.techstore.navigation.BottomNavItem
 import com.gerasimov_mobile_dev.techstore.navigation.allBottomNavItems
-
 import kotlinx.coroutines.launch
 
 
@@ -69,6 +60,11 @@ fun MainScreen(viewModel: TechStoreViewModel) {
     val searchBarState = rememberSearchBarState()
     // Состояние текста: survive рекомпозиции, история добавим позже
     val textFieldState = rememberTextFieldState()
+    val searchInteractionSource = remember { MutableInteractionSource() }
+
+    val isFocused by searchInteractionSource.collectIsFocusedAsState()
+    Log.d("SearchBar", "isFocused = $isFocused")
+
 
     BackHandler() {
         viewModel.goBack()
@@ -79,11 +75,14 @@ fun MainScreen(viewModel: TechStoreViewModel) {
             textFieldState = textFieldState,
             onSearch = { query ->
                 scope.launch { searchBarState.animateToCollapsed() }
-                //*логика поиска
+                viewModel.performSearch(query.toString())
+                // Если текущая вкладка — не Главная, переключим бейдж нижней навигации на «Главная»
+                currentItem = BottomNavItem.Home
             },
-            placeholder = { Text("Поиск по названию") },
+            placeholder = { Text("Поиск по каталогу") },
             leadingIcon = {
-                if (searchBarState.currentValue == SearchBarValue.Expanded) {
+                Log.d("SearchBar", "searchBarState = ${searchBarState.currentValue}")
+                if (isFocused) {
                     IconButton(
                         onClick = {
                             scope.launch { searchBarState.animateToCollapsed() }
@@ -102,31 +101,55 @@ fun MainScreen(viewModel: TechStoreViewModel) {
                 }
             },
             trailingIcon = {
-                // В конце строки — уведомления с бейджем
-                BadgedBox(
-                    badge = {
-                        if (true /*логика бейджей уведомлений*/) {
-                            Badge()
+                //кнопка очистить поле поиска
+                if (isFocused && !textFieldState.text.isEmpty()) {
+                    IconButton(
+                        onClick = {
+                            textFieldState.edit { delete(0, length) }
                         }
-                    }
-                ) {
-                    IconButton(onClick = { /*логика уведомлений*/ }) {
+                    ) {
                         Icon(
-                            imageVector = Icons.Default.Notifications,
-                            contentDescription = "Уведомления"
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "Очистить"
                         )
                     }
+                } else {
+
+                    // уведомления с бейджем
+
+                    BadgedBox(
+                        badge = {
+                            if (true /*логика бейджей уведомлений*/) {
+                                Badge()
+                            }
+                        }
+                    ) {
+                        IconButton(onClick = { /*логика уведомлений*/ }) {
+                            Icon(
+                                imageVector = Icons.Default.Notifications,
+                                contentDescription = "Уведомления"
+                            )
+                        }
+                    }
                 }
-            }
+            },
+
+            colors = inputFieldColors(
+                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+            ),
+            interactionSource = searchInteractionSource
+
         )
     }
 
 
     Box(modifier = Modifier.fillMaxSize()) {
-        Column(modifier = Modifier
-            .fillMaxSize()
-            .padding(top = 72.dp)) {
-            //Топ бар с поиском
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = 72.dp)
+        ) {
 
 
             //WebView
@@ -171,6 +194,7 @@ fun MainScreen(viewModel: TechStoreViewModel) {
                 }
             }
         }
+        //Поисковая строка
         SearchBar(
             modifier = Modifier
                 .align(Alignment.TopCenter)

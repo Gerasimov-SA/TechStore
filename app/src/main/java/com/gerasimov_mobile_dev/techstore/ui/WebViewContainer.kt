@@ -79,6 +79,7 @@ fun WebViewContainer(
 
                         view?.evaluateJavascript(WebScripts.hideHeaderAndSearch, null) //Чтобы при загрузке сайта скрыть его шапку
 
+                        viewModel.applyPendingSearch()//
                         onFinished(url)
                         scope.launch(Dispatchers.Main) {
                             viewModel.updateCanGoBack(view?.canGoBack() ?: false)

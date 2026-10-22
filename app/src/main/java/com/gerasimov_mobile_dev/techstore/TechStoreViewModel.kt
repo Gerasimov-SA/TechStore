@@ -3,6 +3,7 @@ package com.gerasimov_mobile_dev.techstore
 import android.content.Context
 import android.util.Log
 import android.webkit.WebView
+import com.gerasimov_mobile_dev.techstore.bridge.WebScripts
 import com.gerasimov_mobile_dev.techstore.utils.NetworkUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -90,8 +91,33 @@ class TechStoreViewModel(val context: Context) {
             Log.d("VM", "JS result: $result")
         }
     }
+
+    private var pendingSearch: String? = null
+
+    // Вызывается из SearchBar при нажатии Enter / кнопки поиска
+    fun performSearch(query: String) {
+        if (query.isBlank()) {
+            // Пустой запрос — просто открываем каталог со всеми товарами
+            setWebViewUrl(CATALOG_URL)
+            pendingSearch = null
+            return
+        }
+        pendingSearch = query
+        setWebViewUrl(CATALOG_URL) // навигация на каталог
+    }
+
+    // Вызывается из onPageFinished после скрытия шапки
+    fun applyPendingSearch() {
+        pendingSearch?.let { query ->
+            webViewRef?.evaluateJavascript(WebScripts.siteSearch(query)) { result ->
+                Log.d("VM", "Search JS result: $result")
+            }
+            pendingSearch = null
+        }
+    }
     companion object {
         const val BASE_URL = "https://gerasimov-sa.github.io/techstore-web/"
+        const val CATALOG_URL = "${BASE_URL}index.html"
 
     }
 }
