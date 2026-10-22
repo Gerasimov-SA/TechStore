@@ -77,7 +77,7 @@ fun WebViewContainer(
                     override fun onPageFinished(view: WebView?, url: String?) {
                         Log.d("WebView", "onPageFinished: $url")
 
-                        view?.evaluateJavascript(WebScripts.hideHeader, null) //Чтобы при загрузке сайта скрыть его шапку
+                        view?.evaluateJavascript(WebScripts.hideHeaderAndSearch, null) //Чтобы при загрузке сайта скрыть его шапку
 
                         onFinished(url)
                         scope.launch(Dispatchers.Main) {
