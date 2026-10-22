@@ -181,10 +181,10 @@ fun MainScreen(viewModel: TechStoreViewModel) {
                         onClick = {
                             currentItem = item
                             when (item) {
-                                is BottomNavItem.Home -> viewModel.setWebViewUrl("https://gerasimov-sa.github.io/techstore-web/")
-                                is BottomNavItem.Search -> viewModel.setWebViewUrl("https://gerasimov-sa.github.io/techstore-web/search")
-                                is BottomNavItem.Cart -> viewModel.setWebViewUrl("https://gerasimov-sa.github.io/techstore-web/cart")
-                                is BottomNavItem.Profile -> viewModel.setWebViewUrl("https://gerasimov-sa.github.io/techstore-web/profile")
+                                is BottomNavItem.Home -> viewModel.setWebViewUrl("https://hop.uz/")
+                                is BottomNavItem.Search -> viewModel.setWebViewUrl(("https://hop.uz/ad/create/"))
+                                is BottomNavItem.Cart -> viewModel.setWebViewUrl("https://hop.uz/profile/favorites/")
+                                is BottomNavItem.Profile -> viewModel.setWebViewUrl("https://hop.uz/profile/")
                             }
                         },
                         icon = { Icon(item.icon, contentDescription = null) },
@@ -199,7 +199,7 @@ fun MainScreen(viewModel: TechStoreViewModel) {
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .fillMaxWidth()
-                .statusBarsPadding(),
+                .statusBarsPadding().padding(horizontal=8.dp),
             state = searchBarState,
             inputField = inputField,
         )

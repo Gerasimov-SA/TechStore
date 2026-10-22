@@ -15,8 +15,11 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.annotation.RequiresApi
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
@@ -25,6 +28,7 @@ import com.gerasimov_mobile_dev.techstore.TechStoreViewModel
 import com.gerasimov_mobile_dev.techstore.bridge.WebScripts
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
@@ -40,6 +44,16 @@ fun WebViewContainer(
     val context = LocalContext.current
     val activity = context as? MainActivity ?: return
 
+    // Прозрачность WebView: 0 — скрыт, 1 — показан
+    val webViewAlpha = remember { Animatable(0f) }
+
+    // Показываем WebView (после применения скриптов или по таймауту)
+    fun revealWebView() {
+        if (webViewAlpha.value < 1f) {
+            scope.launch(Dispatchers.Main) { webViewAlpha.animateTo(1f, tween(200)) }
+        }
+    }
+
     AndroidView(
         factory = { context ->
             val wv = WebView(context).apply {
@@ -47,7 +61,7 @@ fun WebViewContainer(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT
                 )
-
+                alpha = 0f
                 settings.apply {
                     javaScriptEnabled = true
                     domStorageEnabled = true
@@ -71,20 +85,32 @@ fun WebViewContainer(
                     override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                         Log.d("WebView", "onPageStarted: $url")
                         onStarted()
+                        scope.launch(Dispatchers.Main) { webViewAlpha.snapTo(0f) }
                         super.onPageStarted(view, url, favicon)
                     }
 
                     override fun onPageFinished(view: WebView?, url: String?) {
                         Log.d("WebView", "onPageFinished: $url")
 
-                        view?.evaluateJavascript(WebScripts.hideHeaderAndSearch, null) //Чтобы при загрузке сайта скрыть его шапку
+                        view?.let { wv ->
+                            wv.evaluateJavascript(WebScripts.hideHeaderAndSearch) { _ ->
+                                wv.evaluateJavascript(WebScripts.hideBottomNavBar) { _ ->
+                                    scope.launch(Dispatchers.Main) { revealWebView() }
+                                }
+                            }
 
-                        viewModel.applyPendingSearch()//
-                        onFinished(url)
-                        scope.launch(Dispatchers.Main) {
-                            viewModel.updateCanGoBack(view?.canGoBack() ?: false)
+                            // Страховка: если колбэки не отработают — покажем страницу через 1,5 с
+                            scope.launch(Dispatchers.Main) {
+                                delay(1500)
+                                if (webViewAlpha.value < 1f) webViewAlpha.animateTo(1f, tween(200))
+                            }
+                            viewModel.applyPendingSearch()//
+                            onFinished(url)
+                            scope.launch(Dispatchers.Main) {
+                                viewModel.updateCanGoBack(view?.canGoBack() ?: false)
+                            }
+                            super.onPageFinished(view, url)
                         }
-                        super.onPageFinished(view, url)
                     }
 
                     @RequiresApi(Build.VERSION_CODES.M)
@@ -108,7 +134,7 @@ fun WebViewContainer(
                         request: WebResourceRequest?
                     ): Boolean {
                         val url = request?.url?.toString() ?: return false
-                        Log.d("WebView","equest?.url = $url")
+                        Log.d("WebView", "equest?.url = $url")
                         if (!url.contains(TechStoreViewModel.BASE_URL)) {
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
                                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
@@ -118,7 +144,6 @@ fun WebViewContainer(
                         }
                         return false
                     }
-
 
 
                 }
@@ -157,6 +182,8 @@ fun WebViewContainer(
         }, update = { wv ->
             // Если AndroidView пересоздал WebView — обновляем ссылку в ViewModel
             viewModel.setWebView(wv)
+            // Синхронизируем прозрачность webview с состоянием анимации
+            wv.alpha = webViewAlpha.value
             if (wv.url != url && url != "about:blank") {
                 Log.d("WebView", "URL changed, loading: $url")
                 wv.loadUrl(url)
