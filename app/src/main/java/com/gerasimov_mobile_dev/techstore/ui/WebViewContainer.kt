@@ -19,8 +19,13 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import com.gerasimov_mobile_dev.techstore.MainActivity
@@ -30,6 +35,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun WebViewContainer(
@@ -44,15 +50,8 @@ fun WebViewContainer(
     val context = LocalContext.current
     val activity = context as? MainActivity ?: return
 
-    // Прозрачность WebView: 0 — скрыт, 1 — показан
-    val webViewAlpha = remember { Animatable(0f) }
-
-    // Показываем WebView (после применения скриптов или по таймауту)
-    fun revealWebView() {
-        if (webViewAlpha.value < 1f) {
-            scope.launch(Dispatchers.Main) { webViewAlpha.animateTo(1f, tween(200)) }
-        }
-    }
+    var pageReady by remember { mutableStateOf(false) }
+    var loadEpoch by remember { mutableIntStateOf(0) }
 
     AndroidView(
         factory = { context ->
@@ -61,7 +60,7 @@ fun WebViewContainer(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT
                 )
-                alpha = 0f
+
                 settings.apply {
                     javaScriptEnabled = true
                     domStorageEnabled = true
@@ -83,34 +82,52 @@ fun WebViewContainer(
                 // WebViewClient — навигация и ошибки
                 webViewClient = object : WebViewClient() {
                     override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
+
                         Log.d("WebView", "onPageStarted: $url")
                         onStarted()
-                        scope.launch(Dispatchers.Main) { webViewAlpha.snapTo(0f) }
+                        loadEpoch++
+                        pageReady = false
+                        // Ранний инжект: сработает, если документ уже закоммичен; иначе — потеряется, не страшно
+                        view?.evaluateJavascript(WebScripts.injectHideStyles, null)
                         super.onPageStarted(view, url, favicon)
                     }
 
                     override fun onPageFinished(view: WebView?, url: String?) {
                         Log.d("WebView", "onPageFinished: $url")
+                        val epoch = loadEpoch
 
                         view?.let { wv ->
-                            wv.evaluateJavascript(WebScripts.hideHeaderAndSearch) { _ ->
-                                wv.evaluateJavascript(WebScripts.hideBottomNavBar) { _ ->
-                                    scope.launch(Dispatchers.Main) { revealWebView() }
+                            // Инжект гарантированно попадает в живой документ
+                            wv.evaluateJavascript(WebScripts.injectHideStyles, null)
+
+                            // Поллинг: каждые 200 мс проверяем, пока не увидим OK (максимум ~4 с)
+                            scope.launch(Dispatchers.Main) {
+                                repeat(20) {
+                                    delay(200)
+                                    if (epoch != loadEpoch || pageReady) return@launch
+                                    wv.evaluateJavascript(WebScripts.verifyHidden) { r ->
+                                        if (r?.contains("OK") == true && epoch == loadEpoch) {
+                                            pageReady = true
+                                            Log.d("WebView", "Стили применены, показываем")
+                                        }
+                                    }
+                                }
+                                // Страховка: показать в любом случае, чтобы не застрять
+                                if (epoch == loadEpoch && !pageReady) {
+                                    Log.d("WebView", "Сработала страховка")
+                                    pageReady = true
                                 }
                             }
 
-                            // Страховка: если колбэки не отработают — покажем страницу через 1,5 с
-                            scope.launch(Dispatchers.Main) {
-                                delay(1500)
-                                if (webViewAlpha.value < 1f) webViewAlpha.animateTo(1f, tween(200))
-                            }
-                            viewModel.applyPendingSearch()//
-                            onFinished(url)
-                            scope.launch(Dispatchers.Main) {
-                                viewModel.updateCanGoBack(view?.canGoBack() ?: false)
-                            }
-                            super.onPageFinished(view, url)
+
                         }
+
+                        onFinished(url)
+                        scope.launch(Dispatchers.Main) {
+                            viewModel.updateCanGoBack(view?.canGoBack() ?: false)
+                        }
+                        super.onPageFinished(view, url)
+
                     }
 
                     @RequiresApi(Build.VERSION_CODES.M)
@@ -182,13 +199,14 @@ fun WebViewContainer(
         }, update = { wv ->
             // Если AndroidView пересоздал WebView — обновляем ссылку в ViewModel
             viewModel.setWebView(wv)
-            // Синхронизируем прозрачность webview с состоянием анимации
-            wv.alpha = webViewAlpha.value
+
             if (wv.url != url && url != "about:blank") {
                 Log.d("WebView", "URL changed, loading: $url")
                 wv.loadUrl(url)
             }
         },
-        modifier = modifier.fillMaxSize()
+        modifier = modifier
+            .fillMaxSize()
+            .alpha(if (pageReady) 1f else 0f)
     )
 }

@@ -8,6 +8,7 @@ import com.gerasimov_mobile_dev.techstore.utils.NetworkUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.net.URLEncoder
 
 
 sealed class TechStoreState {
@@ -95,30 +96,21 @@ class TechStoreViewModel(val context: Context) {
     private var pendingSearch: String? = null
 
     // Вызывается из SearchBar при нажатии Enter / кнопки поиска
+
     fun performSearch(query: String) {
         if (query.isBlank()) {
-            // Пустой запрос — просто открываем каталог со всеми товарами
-            setWebViewUrl(CATALOG_URL)
-            pendingSearch = null
+            setWebViewUrl(BASE_URL)
             return
         }
-        pendingSearch = query
-        setWebViewUrl(CATALOG_URL) // навигация на каталог
+        val encoded = URLEncoder.encode(query, "UTF-8")
+        setWebViewUrl("https://hop.uz/all?search=$encoded")
     }
-
     // Вызывается из onPageFinished после скрытия шапки
-    fun applyPendingSearch() {
-        pendingSearch?.let { query ->
-            webViewRef?.evaluateJavascript(WebScripts.siteSearch(query)) { result ->
-                Log.d("VM", "Search JS result: $result")
-            }
-            pendingSearch = null
-        }
-    }
+
     companion object {
 //        const val BASE_URL = "https://gerasimov-sa.github.io/techstore-web/"
         const val BASE_URL = "https://hop.uz/"
-        const val CATALOG_URL = "${BASE_URL}index.html"
+
 
     }
 }

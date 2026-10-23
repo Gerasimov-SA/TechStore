@@ -24,6 +24,24 @@ object WebScripts {
 """.trimIndent()
 
 
+    //Еще один скрипт для скрытия шапки и навигации
+    val injectHideStyles = """
+    (function() {
+        if (!document.getElementById('app-hide-style')) {
+            var s = document.createElement('style');
+            s.id = 'app-hide-style';
+            s.textContent = 'header.header-height-mobile, .main-floating-menu { display: none !important; }';
+            (document.head || document.documentElement).appendChild(s);
+        }
+        return "INJECTED";
+    })()
+""".trimIndent()
+    //Скрипт для проверки что шапка и навигация скрыты
+    val verifyHidden = """
+    (function() {
+        return document.getElementById('app-hide-style') ? "OK" : "PENDING";
+    })()
+""".trimIndent()
 
 
     //Если сайт динамический и шапка подгружается асинхронно (скрипт проверяет наличие элемента каждые 100мс, пока не найдет)
