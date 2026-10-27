@@ -59,7 +59,7 @@ fun MainScreen(viewModel: TechStoreViewModel) {
     val currentTab by viewModel.currentTab.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
 
-    // Состояние SearchBar (новый API Material 3)
+
     val searchBarState = rememberSearchBarState()
     val textFieldState = rememberTextFieldState()
     val searchInteractionSource = remember { MutableInteractionSource() }
@@ -98,7 +98,8 @@ fun MainScreen(viewModel: TechStoreViewModel) {
                 if (isFocused) {
                     IconButton(
                         onClick = {
-                            scope.launch { searchBarState.animateToCollapsed() }
+                            scope.launch { searchBarState.animateToCollapsed()
+                            viewModel.onSearchCleared()}
                         }
                     ) {
                         Icon(
@@ -118,7 +119,8 @@ fun MainScreen(viewModel: TechStoreViewModel) {
                 if (isFocused && !textFieldState.text.isEmpty()) {
                     IconButton(
                         onClick = {
-                            textFieldState.edit { delete(0, length) }
+                            textFieldState.edit { delete(0, length)
+                            viewModel.onSearchCleared()}
                         }
                     ) {
                         Icon(
@@ -127,9 +129,7 @@ fun MainScreen(viewModel: TechStoreViewModel) {
                         )
                     }
                 } else {
-
                     // уведомления с бейджем
-
                     BadgedBox(
                         badge = {
                             if (true /*логика бейджей уведомлений*/) {

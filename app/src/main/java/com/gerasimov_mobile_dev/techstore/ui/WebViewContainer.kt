@@ -84,7 +84,7 @@ fun WebViewContainer(
                         onStarted()
                         loadEpoch++
                         pageReady = false
-                        // Ранний инжект: сработает, если документ уже закоммичен; иначе — потеряется, не страшно
+                        //Выполняем скрипт для скрытия шапки сайта
                         view?.evaluateJavascript(WebScripts.injectHideStyles, null)
                         super.onPageStarted(view, url, favicon)
                     }
@@ -94,10 +94,10 @@ fun WebViewContainer(
                         val epoch = loadEpoch
 
                         view?.let { wv ->
-                            // Инжект гарантированно попадает в живой документ
+                            //Еще раз выполняем скрипт для скрытия шапки сайта, если он не сработал
                             wv.evaluateJavascript(WebScripts.injectHideStyles, null)
 
-                            // Поллинг: каждые 200 мс проверяем, пока не увидим OK (максимум ~4 с)
+                            // Проверяем что шапка сайта скрыта каждые 200мс (максимум ~4 с)
                             scope.launch(Dispatchers.Main) {
                                 repeat(20) {
                                     delay(200)
@@ -163,7 +163,7 @@ fun WebViewContainer(
 
                 }
 
-//                 ChromeClient — диалоги, загрузки, камера и т.д.
+                //ChromeClient — диалоги, загрузки, камера и т.д.
                 webChromeClient = object : WebChromeClient() {
                     // Обработка alert/confirm/prompt
                     override fun onJsAlert(

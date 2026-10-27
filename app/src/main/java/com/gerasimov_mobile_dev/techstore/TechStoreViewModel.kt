@@ -99,16 +99,7 @@ class TechStoreViewModel(application: Application) : AndroidViewModel(applicatio
         webViewRef?.loadUrl(url)
     }
 
-    fun evaluateJs(js: String) {
-        // Если WebView ещё не готов — можно либо игнорировать, либо ставить в очередь
-        webViewRef?.evaluateJavascript(js) { result ->
-            Log.d("VM", "JS result: $result")
-        }
-    }
 
-    private var pendingSearch: String? = null
-
-    // Вызывается из SearchBar при нажатии Enter / кнопки поиска
 
     fun performSearch(query: String) {
         if (query.isBlank()) {
@@ -144,13 +135,13 @@ class TechStoreViewModel(application: Application) : AndroidViewModel(applicatio
             delay(300)
             val wv = webViewRef ?: return@launch
 
-            // 1. Вводим текст в родное поле поиска  — сайт сам запустит свой live-search
+            // Вводим текст в родное поле поиска веб сайта
             withContext(Dispatchers.Main) {
                 wv.evaluateJavascript(WebScripts.typeInSiteSearch(query), null)
             }
-            // 2. Даём сайту время запросить и отрисовать подсказки
+            //Даём сайту время
             delay(600)
-            // 3. Читаем результат из DOM
+            //Читаем подсказки поиска из сайта
             withContext(Dispatchers.Main) {
                 wv.evaluateJavascript(WebScripts.readSearchSuggestions) { result ->
                     _suggestions.value = parseSuggestions(result)
@@ -170,8 +161,6 @@ class TechStoreViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     private fun parseSuggestions(raw: String?): List<String> = try {
-        // evaluateJavascript оборачивает возвращённый массив в строку вида ["a","b"]
-        // и в кавычки целиком, если это строка; JSONArray справляется с обоими случаями
         val cleaned = raw?.trim()?.removeSurrounding("\"")?.replace("\\\"", "\"") ?: "[]"
         val arr = JSONArray(cleaned)
         (0 until arr.length()).map { arr.getString(it) }
