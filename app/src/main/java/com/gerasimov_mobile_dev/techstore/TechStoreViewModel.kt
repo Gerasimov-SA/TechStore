@@ -1,13 +1,24 @@
 package com.gerasimov_mobile_dev.techstore
 
-import android.content.Context
+import android.app.Application
 import android.util.Log
 import android.webkit.WebView
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.application
+import androidx.lifecycle.viewModelScope
 import com.gerasimov_mobile_dev.techstore.bridge.WebScripts
+import com.gerasimov_mobile_dev.techstore.navigation.BottomNavItem
 import com.gerasimov_mobile_dev.techstore.utils.NetworkUtils
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import java.net.URLEncoder
 
 
 sealed class TechStoreState {
@@ -18,12 +29,15 @@ sealed class TechStoreState {
 }
 
 
-class TechStoreViewModel(val context: Context) {
+class TechStoreViewModel(application: Application) : AndroidViewModel(application) {
+
     private val _uiState = MutableStateFlow<TechStoreState>(TechStoreState.Loading)
     val uiState: StateFlow<TechStoreState> = _uiState.asStateFlow()
+    private val _currentTab = MutableStateFlow<BottomNavItem>(BottomNavItem.Home)
+    val currentTab: StateFlow<BottomNavItem> = _currentTab.asStateFlow()
 
     init {
-        if (!NetworkUtils.isConnected(context = context)) {
+        if (!NetworkUtils.isConnected(context = application)) {
             _uiState.value = TechStoreState.Error("Нет подключения к интернету")
             Log.d("ViewModel", "init")
         }
@@ -75,7 +89,7 @@ class TechStoreViewModel(val context: Context) {
     }
 
     fun retry() {
-        if (NetworkUtils.isConnected(context = context)) {
+        if (NetworkUtils.isConnected(application)) {
             _uiState.value = TechStoreState.Loading
             reloadWebView()
         } else _uiState.value = TechStoreState.Error("Нет подключения к интернету")
@@ -95,29 +109,81 @@ class TechStoreViewModel(val context: Context) {
     private var pendingSearch: String? = null
 
     // Вызывается из SearchBar при нажатии Enter / кнопки поиска
+
     fun performSearch(query: String) {
         if (query.isBlank()) {
-            // Пустой запрос — просто открываем каталог со всеми товарами
-            setWebViewUrl(CATALOG_URL)
-            pendingSearch = null
+            setWebViewUrl(BASE_URL)
             return
         }
-        pendingSearch = query
-        setWebViewUrl(CATALOG_URL) // навигация на каталог
+        val encoded = URLEncoder.encode(query, "UTF-8")
+        setWebViewUrl("https://hop.uz/all?search=$encoded")
     }
 
-    // Вызывается из onPageFinished после скрытия шапки
-    fun applyPendingSearch() {
-        pendingSearch?.let { query ->
-            webViewRef?.evaluateJavascript(WebScripts.siteSearch(query)) { result ->
-                Log.d("VM", "Search JS result: $result")
+    fun onSuggestionSelected(suggestion: String) {
+        _currentTab.value = BottomNavItem.Home
+        performSearch(suggestion)
+    }
+
+    fun onTabSelected(item: BottomNavItem) {
+        _currentTab.value = item
+        setWebViewUrl(item.url)
+    }
+
+    //Поиск с подскзаками с сайта
+    private val _suggestions = MutableStateFlow<List<String>>(emptyList())
+    val suggestions: StateFlow<List<String>> = _suggestions.asStateFlow()
+    private var suggestJob: Job? = null
+
+    fun onQueryChanged(query: String) {
+        suggestJob?.cancel()
+        if (query.length < 2) {
+            _suggestions.value = emptyList()
+            return
+        }
+        suggestJob = viewModelScope.launch {
+            delay(300)
+            val wv = webViewRef ?: return@launch
+
+            // 1. Вводим текст в родное поле поиска  — сайт сам запустит свой live-search
+            withContext(Dispatchers.Main) {
+                wv.evaluateJavascript(WebScripts.typeInSiteSearch(query), null)
             }
-            pendingSearch = null
+            // 2. Даём сайту время запросить и отрисовать подсказки
+            delay(600)
+            // 3. Читаем результат из DOM
+            withContext(Dispatchers.Main) {
+                wv.evaluateJavascript(WebScripts.readSearchSuggestions) { result ->
+                    _suggestions.value = parseSuggestions(result)
+                }
+            }
         }
     }
+
+    fun onSearchSubmitted(query: String) {
+        _currentTab.value = BottomNavItem.Home
+        performSearch(query)
+    }
+
+    fun onSearchCleared() {
+        suggestJob?.cancel()
+        _suggestions.value = emptyList()
+    }
+
+    private fun parseSuggestions(raw: String?): List<String> = try {
+        // evaluateJavascript оборачивает возвращённый массив в строку вида ["a","b"]
+        // и в кавычки целиком, если это строка; JSONArray справляется с обоими случаями
+        val cleaned = raw?.trim()?.removeSurrounding("\"")?.replace("\\\"", "\"") ?: "[]"
+        val arr = JSONArray(cleaned)
+        (0 until arr.length()).map { arr.getString(it) }
+    } catch (e: Exception) {
+        Log.w("VM", "parseSuggestions failed: ${e.message}")
+        emptyList()
+    }
+
     companion object {
-        const val BASE_URL = "https://gerasimov-sa.github.io/techstore-web/"
-        const val CATALOG_URL = "${BASE_URL}index.html"
+        //        const val BASE_URL = "https://gerasimov-sa.github.io/techstore-web/"
+        const val BASE_URL = "https://hop.uz/"
+
 
     }
 }

@@ -51,7 +51,7 @@ class MainActivity : ComponentActivity() {
                 TechStoreNavGraph(
                     navController = navController,
                     viewModelFactory = {
-                        TechStoreViewModel(context = applicationContext)
+                        TechStoreViewModel(application = application)
                     },
                     scope = scope
                 )

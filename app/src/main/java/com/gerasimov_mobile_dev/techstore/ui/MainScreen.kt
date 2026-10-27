@@ -3,6 +3,7 @@ package com.gerasimov_mobile_dev.techstore.ui
 
 import android.util.Log
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Box
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.text.input.delete
+import androidx.compose.foundation.text.input.insert
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -20,9 +22,11 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.ExpandedFullScreenSearchBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -32,18 +36,17 @@ import androidx.compose.material3.SearchBarDefaults.inputFieldColors
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.gerasimov_mobile_dev.techstore.TechStoreState
 import com.gerasimov_mobile_dev.techstore.TechStoreViewModel
-import com.gerasimov_mobile_dev.techstore.navigation.BottomNavItem
 import com.gerasimov_mobile_dev.techstore.navigation.allBottomNavItems
 import kotlinx.coroutines.launch
 
@@ -52,32 +55,42 @@ import kotlinx.coroutines.launch
 @Composable
 fun MainScreen(viewModel: TechStoreViewModel) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val suggestions by viewModel.suggestions.collectAsStateWithLifecycle()
+    val currentTab by viewModel.currentTab.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
-
-    var currentItem: BottomNavItem by remember { mutableStateOf(BottomNavItem.Home) }// Состояние текущего пункта меню нижней навигации
 
     // Состояние SearchBar (новый API Material 3)
     val searchBarState = rememberSearchBarState()
-    // Состояние текста: survive рекомпозиции, история добавим позже
     val textFieldState = rememberTextFieldState()
     val searchInteractionSource = remember { MutableInteractionSource() }
 
     val isFocused by searchInteractionSource.collectIsFocusedAsState()
-    Log.d("SearchBar", "isFocused = $isFocused")
 
-
+    LaunchedEffect(Unit) {
+        snapshotFlow { textFieldState.text.toString() }
+            .collect { viewModel.onQueryChanged(it) }
+    }
+    Log.d("UiState", "Текущее состяние UI = $state")
     BackHandler() {
         viewModel.goBack()
     }
+
+    fun applySuggestion(suggestion: String) {
+        textFieldState.edit {
+            delete(0, length)
+            insert(0, suggestion)
+        }
+        scope.launch { searchBarState.animateToCollapsed() }
+        viewModel.onSuggestionSelected(suggestion)
+    }
+
     val inputField = @Composable {
         SearchBarDefaults.InputField(
             searchBarState = searchBarState,
             textFieldState = textFieldState,
             onSearch = { query ->
                 scope.launch { searchBarState.animateToCollapsed() }
-                viewModel.performSearch(query.toString())
-                // Если текущая вкладка — не Главная, переключим бейдж нижней навигации на «Главная»
-                currentItem = BottomNavItem.Home
+                viewModel.onSearchSubmitted(query)
             },
             placeholder = { Text("Поиск по каталогу") },
             leadingIcon = {
@@ -177,15 +190,9 @@ fun MainScreen(viewModel: TechStoreViewModel) {
             ) {
                 allBottomNavItems.forEach { item ->
                     NavigationBarItem(
-                        selected = currentItem.route == item.route,
+                        selected = currentTab.route == item.route,
                         onClick = {
-                            currentItem = item
-                            when (item) {
-                                is BottomNavItem.Home -> viewModel.setWebViewUrl("https://gerasimov-sa.github.io/techstore-web/")
-                                is BottomNavItem.Search -> viewModel.setWebViewUrl("https://gerasimov-sa.github.io/techstore-web/search")
-                                is BottomNavItem.Cart -> viewModel.setWebViewUrl("https://gerasimov-sa.github.io/techstore-web/cart")
-                                is BottomNavItem.Profile -> viewModel.setWebViewUrl("https://gerasimov-sa.github.io/techstore-web/profile")
-                            }
+                            viewModel.onTabSelected(item)
                         },
                         icon = { Icon(item.icon, contentDescription = null) },
                         label = { Text(text = item.title) },
@@ -194,15 +201,29 @@ fun MainScreen(viewModel: TechStoreViewModel) {
                 }
             }
         }
-        //Поисковая строка
+        //Свернутая поисковая строка
         SearchBar(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .fillMaxWidth()
-                .statusBarsPadding(),
+                .statusBarsPadding()
+                .padding(horizontal = 8.dp),
             state = searchBarState,
             inputField = inputField,
         )
+        //Развернутая поисковая строка с подсказками
+        ExpandedFullScreenSearchBar(
+            state = searchBarState,
+            inputField = inputField,
+
+            ) {
+            suggestions.forEach { suggestion ->
+                ListItem(
+                    headlineContent = { Text(suggestion) },
+                    modifier = Modifier.clickable { applySuggestion(suggestion) }
+                )
+            }
+        }
     }
 
     Log.d("state", "state = $state")

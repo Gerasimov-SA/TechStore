@@ -17,7 +17,13 @@ import android.webkit.WebViewClient
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import com.gerasimov_mobile_dev.techstore.MainActivity
@@ -25,6 +31,7 @@ import com.gerasimov_mobile_dev.techstore.TechStoreViewModel
 import com.gerasimov_mobile_dev.techstore.bridge.WebScripts
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
@@ -39,6 +46,9 @@ fun WebViewContainer(
 ) {
     val context = LocalContext.current
     val activity = context as? MainActivity ?: return
+
+    var pageReady by remember { mutableStateOf(false) }
+    var loadEpoch by remember { mutableIntStateOf(0) }
 
     AndroidView(
         factory = { context ->
@@ -69,22 +79,52 @@ fun WebViewContainer(
                 // WebViewClient — навигация и ошибки
                 webViewClient = object : WebViewClient() {
                     override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
+
                         Log.d("WebView", "onPageStarted: $url")
                         onStarted()
+                        loadEpoch++
+                        pageReady = false
+                        // Ранний инжект: сработает, если документ уже закоммичен; иначе — потеряется, не страшно
+                        view?.evaluateJavascript(WebScripts.injectHideStyles, null)
                         super.onPageStarted(view, url, favicon)
                     }
 
                     override fun onPageFinished(view: WebView?, url: String?) {
                         Log.d("WebView", "onPageFinished: $url")
+                        val epoch = loadEpoch
 
-                        view?.evaluateJavascript(WebScripts.hideHeaderAndSearch, null) //Чтобы при загрузке сайта скрыть его шапку
+                        view?.let { wv ->
+                            // Инжект гарантированно попадает в живой документ
+                            wv.evaluateJavascript(WebScripts.injectHideStyles, null)
 
-                        viewModel.applyPendingSearch()//
+                            // Поллинг: каждые 200 мс проверяем, пока не увидим OK (максимум ~4 с)
+                            scope.launch(Dispatchers.Main) {
+                                repeat(20) {
+                                    delay(200)
+                                    if (epoch != loadEpoch || pageReady) return@launch
+                                    wv.evaluateJavascript(WebScripts.verifyHidden) { r ->
+                                        if (r?.contains("OK") == true && epoch == loadEpoch) {
+                                            pageReady = true
+                                            Log.d("WebView", "Стили применены, показываем")
+                                        }
+                                    }
+                                }
+                                // Страховка: показать в любом случае, чтобы не застрять
+                                if (epoch == loadEpoch && !pageReady) {
+                                    Log.d("WebView", "Сработала страховка")
+                                    pageReady = true
+                                }
+                            }
+
+
+                        }
+
                         onFinished(url)
                         scope.launch(Dispatchers.Main) {
                             viewModel.updateCanGoBack(view?.canGoBack() ?: false)
                         }
                         super.onPageFinished(view, url)
+
                     }
 
                     @RequiresApi(Build.VERSION_CODES.M)
@@ -93,12 +133,13 @@ fun WebViewContainer(
                         request: WebResourceRequest?,
                         error: WebResourceError?
                     ) {
-                        Log.e(
-                            "WebView",
-                            "onReceivedError: ${error?.errorCode} ${error?.description} ${request?.url}"
-                        )
+
                         val msg = error?.description ?: "Ошибка загрузки страницы"
                         onError(msg.toString())
+                        Log.e(
+                            "WebView",
+                            "Сработал onReceivedError: ${error?.errorCode} ${error?.description} ${request?.url} msg = $msg"
+                        )
                         super.onReceivedError(view, request, error)
                     }
 
@@ -108,7 +149,7 @@ fun WebViewContainer(
                         request: WebResourceRequest?
                     ): Boolean {
                         val url = request?.url?.toString() ?: return false
-                        Log.d("WebView","equest?.url = $url")
+                        Log.d("WebView", "equest?.url = $url")
                         if (!url.contains(TechStoreViewModel.BASE_URL)) {
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
                                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
@@ -118,7 +159,6 @@ fun WebViewContainer(
                         }
                         return false
                     }
-
 
 
                 }
@@ -162,6 +202,8 @@ fun WebViewContainer(
                 wv.loadUrl(url)
             }
         },
-        modifier = modifier.fillMaxSize()
+        modifier = modifier
+            .fillMaxSize()
+            .alpha(if (pageReady) 1f else 0f)
     )
 }
